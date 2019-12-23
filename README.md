@@ -8,12 +8,12 @@ pic12f683
 
 |pin|assignment|
 |:--|:--|
-|GP0|out (LED RED)|
-|GP1|out (LED BLUE)|
-|GP2|out (LED GREEN)|
-|GP3|in  (SWITCH RED)|
-|GP4|in  (SWITCH BLUE)|
-|GP5|in  (SWITCH GREEN)|
+|GP0|out (led red)|
+|GP1|out (led blue)|
+|GP2|out (led green)|
+|GP3|in  (switch red)|
+|GP4|in  (switch blue)|
+|GP5|in  (switch grean)|
 
 ## LICENSE
 
