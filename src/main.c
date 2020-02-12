@@ -16,27 +16,38 @@
 #define _XTAL_FREQ 8000000
 #endif
 
-uint8_t tflg[3] = {1, 1, 1};
-uint8_t cnt     = 0;
-uint8_t duty[3] = {0x80, 0xff, 0x00};
-int8_t  step[3] = {1, 1, 1};
+#define R_SW GP5
+#define B_SW GP4
+#define G_SW GP3
+
+#define R_SW_ON 0x01
+#define B_SW_ON 0x02
+#define G_SW_ON 0x04
+
+#define CHATT_CNT 3
+
+uint8_t pwm_on[3] = {1, 1, 1};
 
 void __interrupt() isr(void) {
+  static uint8_t cnt     = 0;
+  static uint8_t duty[3] = {0x80, 0xff, 0x00};
+  static int8_t  step[3] = {1, 1, 1};
+
   if (T1IF) {
     TMR1H = 0xd8;
     TMR1L = 0xf0;
 
-    if (tflg[0]) {
+    if (pwm_on[0]) {
       step[0]  = (duty[0] == 0) ? 1 : (duty[0] == 255) ? -1 : step[0];
       duty[0] += step[0];
     }
-    
-    if (tflg[1]) {
+
+    if (pwm_on[1]) {
       step[1]  = (duty[1] == 0) ? 1 : (duty[1] == 255) ? -1 : step[1];
       duty[1] += step[1];
     }
-    
-    if (tflg[2]) {
+
+    if (pwm_on[2]) {
       step[2]  = (duty[2] == 0) ? 1 : (duty[2] == 255) ? -1 : step[2];
       duty[2] += step[2];
     }
@@ -51,6 +62,84 @@ void __interrupt() isr(void) {
     GP2  = (cnt <= duty[2]) ? 1 : 0;
     T2IF = 0;
   }
+}
+
+uint8_t read_sw(void) {
+  static uint8_t sw;
+  static uint8_t r_cnt[2];
+  static uint8_t b_cnt[2];
+  static uint8_t g_cnt[2];
+
+  if ((sw & R_SW_ON) == 0) {
+    if (R_SW == 0)
+      r_cnt[0]++;
+    else
+      r_cnt[0] = 0;
+
+    if (r_cnt[0] > CHATT_CNT) {
+      r_cnt[0] = 0;
+      sw |= R_SW_ON;
+      return sw;
+    }
+  } else {
+    if (R_SW == 1)
+      r_cnt[1]++;
+    else
+      r_cnt[1] = 0;
+
+    if (r_cnt[1] > CHATT_CNT) {
+      r_cnt[1] = 0;
+      sw &= ~R_SW_ON;
+    }
+  }
+
+  if ((sw & B_SW_ON) == 0) {
+    if (B_SW == 0)
+      b_cnt[0]++;
+    else
+      b_cnt[0] = 0;
+
+    if (b_cnt[0] > CHATT_CNT) {
+      b_cnt[0] = 0;
+      sw |= B_SW_ON;
+      return sw;
+    }
+  } else {
+    if (B_SW == 1)
+      b_cnt[1]++;
+    else
+      b_cnt[1] = 0;
+
+    if (b_cnt[1] > CHATT_CNT) {
+      b_cnt[1] = 0;
+      sw &= ~B_SW_ON;
+    }
+  }
+
+  if ((sw & G_SW_ON) == 0) {
+    if (G_SW == 0)
+      g_cnt[0]++;
+    else
+      g_cnt[0] = 0;
+
+    if (g_cnt[0] > CHATT_CNT) {
+      g_cnt[0] = 0;
+      sw |= G_SW_ON;
+      return sw;
+    }
+  } else {
+    if (G_SW == 1)
+      g_cnt[1]++;
+    else
+      g_cnt[1] = 0;
+
+    if (g_cnt[1] > CHATT_CNT) {
+      g_cnt[1] = 0;
+      sw &= ~G_SW_ON;
+    }
+  }
+
+  return 0;
 }
 
 void main(void) {
@@ -77,22 +166,12 @@ void main(void) {
   TMR1ON = 1;
   TMR2ON = 1;
 
+  uint8_t sw = 0;
+
   while (1) {
-    if (GP5 == 0) {
-      tflg[0] = tflg[0] ^ 1;
-
-      while (GP5 == 0);
-      __delay_ms(50);
-    } else if (GP4 == 0) {
-      tflg[1] = tflg[1] ^ 1;
-
-      while (GP4 == 0);
-      __delay_ms(50);
-    } else if (GP3 == 0) {
-      tflg[2] = tflg[2] ^ 1;
-
-      while (GP3 == 0);
-      __delay_ms(50);
-    }
+    sw = read_sw();
+    pwm_on[0] = sw & R_SW_ON ? pwm_on[0] ^ 1 : pwm_on[0];
+    pwm_on[1] = sw & B_SW_ON ? pwm_on[1] ^ 1 : pwm_on[1];
+    pwm_on[2] = sw & G_SW_ON ? pwm_on[2] ^ 1 : pwm_on[2];
   }
 }
